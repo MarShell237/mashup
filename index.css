@@ -1,0 +1,118 @@
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(to bottom, #003366, #0073e6);
+    color: #fff;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+h1 {
+    font-size: 2.5rem;
+    margin: 20px 0;
+}
+
+#content {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    width: 100%;
+    max-width: 1200px;
+    flex-wrap: wrap; /* Permet aux éléments de passer à la ligne sur les petits écrans */
+}
+
+#info {
+    flex: 1;
+    padding: 20px;
+    min-width: 300px;
+}
+
+#map-container {
+    flex: 1;
+    height: 500px;
+    position: relative;
+    min-width: 300px;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+}
+
+.panel, .weather {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+    max-width: 250px;
+    color: blue;
+}
+
+.panel {
+    top: 10px;
+    left: 10px;
+}
+
+.weather {
+    bottom: 10px;
+    left: 10px;
+}
+
+.good {
+    color: #00e400;
+}
+
+.moderate {
+    color: #ffff00;
+}
+
+.unhealthy {
+    color: #ff0000;
+}
+
+/* Media Queries */
+@media (max-width: 768px) {
+    #content {
+        flex-direction: column; /* Colonne sur les petits écrans */
+    }
+
+    #map-container {
+        height: 300px; /* Réduit la taille de la carte sur les petits écrans */
+        order: 2; /* Déplace la carte après les informations */
+    }
+
+    #info {
+        order: 1; /* Laisse les informations en premier sur les petits écrans */
+    }
+
+    .panel, .weather {
+        max-width: 200px; /* Réduit la taille des panneaux */
+        font-size: 0.9rem;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    h1 {
+        font-size: 1.5rem; /* Plus petit pour les très petits écrans */
+    }
+
+    .panel, .weather {
+        max-width: 180px;
+        font-size: 0.8rem;
+    }
+
+    #map-container {
+        height: 250px;
+    }
+}
