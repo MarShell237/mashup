@@ -4,21 +4,20 @@ const clientSecret = 'DtCcu1gq5YBcGifS3ROCjOwAvo5lwdObFdNygAjJ';
 function initMap() {
     const mapCenter = { lat: 45.1885, lng: 5.7245 }; // Grenoble
 
-    // Initialize the map
+    // Initialiser la carte
     const map = new google.maps.Map(document.getElementById("map"), {
         center: mapCenter,
         zoom: 10,
     });
 
-    // Add a click listener to the map
+    // Ajouter un écouteur d'événement sur la carte
     map.addListener("click", (mapsMouseEvent) => {
         const lat = mapsMouseEvent.latLng.lat();
         const lng = mapsMouseEvent.latLng.lng();
 
-        // Fetch air quality, weather, and restaurants for the clicked location
+        // Récupérer la qualité de l'air, la météo et les restaurants pour l'emplacement cliqué
         fetchAirQuality(lat, lng);
         fetchWeather(lat, lng);
-        fetchNearbyRestaurants(lat, lng);
     });
 }
 
@@ -68,45 +67,25 @@ function fetchAirQuality(lat, lng) {
 }
 
 function fetchWeather(lat, lng) {
-    const weatherApiKey = 'YOUR_WEATHER_API_KEY';  // Replace with your OpenWeatherMap API key
+    const weatherApiKey = 'c91e8214d5b69fb200e4d6289613f4c8';  // Remplace par ta clé API OpenWeather
     const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&appid=${weatherApiKey}&units=metric&lang=fr`;
 
     fetch(weatherUrl)
         .then(response => response.json())
         .then(data => {
-            const temperature = data.main.temp;
-            const description = data.weather[0].description;
-            const weatherInfo = `<p>Température: ${temperature}°C</p><p>${description}</p>`;
-            document.getElementById('weather-data').innerHTML = weatherInfo;
+            if (data.main) {  // Vérifie que les données météo sont présentes
+                const temperature = data.main.temp;
+                const description = data.weather[0].description;
+                const weatherInfo = `<p>Température: ${temperature}°C</p><p>${description}</p>`;
+                document.getElementById('weather-data').innerHTML = weatherInfo;
+            } else {
+                document.getElementById('weather-data').innerHTML = 'Données météo non disponibles.';
+            }
         })
         .catch(error => {
             console.error('Erreur:', error);
             document.getElementById('weather-data').innerHTML = 'Erreur lors de la récupération des données météo.';
         });
-}
-
-function fetchNearbyRestaurants(lat, lng) {
-    const service = new google.maps.places.PlacesService(document.createElement('div'));
-    const request = {
-        location: new google.maps.LatLng(lat, lng),
-        radius: 100000,  // 100 km
-        type: ['restaurant']
-    };
-
-    service.nearbySearch(request, (results, status) => {
-        const restaurantList = document.getElementById('restaurants-list');
-        restaurantList.innerHTML = ''; // Clear previous results
-
-        if (status === google.maps.places.PlacesServiceStatus.OK) {
-            results.forEach(result => {
-                const restaurant = document.createElement('p');
-                restaurant.textContent = result.name;
-                restaurantList.appendChild(restaurant);
-            });
-        } else {
-            restaurantList.innerHTML = 'Aucun restaurant trouvé à proximité.';
-        }
-    });
 }
 
 window.onload = initMap;
