@@ -1,5 +1,36 @@
-const clientId = '5EB7U9eW4FRZK3Ey2lrQ0';
-const clientSecret = 'DtCcu1gq5YBcGifS3ROCjOwAvo5lwdObFdNygAjJ';
+
+const weatherApiKey = '098185580a031e38cba98336c09fb082';
+const clientId = 'j2iM83a1d4LKCt6EHg7LB';
+const clientSecret = 'T7VsTvbpQQauCfaoKyiRVQuU0PI0l5IlbxKtAan4';
+
+// Variables pour limiter les appels API
+let lastApiCall = 0;
+const apiCooldown = 10000; // Délai de 10 secondes
+let lastLocation = { lat: null, lng: null }; // Dernières coordonnées utilisées
+
+function canMakeApiCall() {
+    const now = Date.now();
+    if (now - lastApiCall > apiCooldown) {
+        lastApiCall = now;
+        return true;
+    }
+    return false;
+}
+
+function fetchDataIfNewLocation(lat, lng) {
+    if (lat !== lastLocation.lat || lng !== lastLocation.lng) {
+        lastLocation = { lat, lng };
+
+        if (canMakeApiCall()) {
+            fetchAirQuality(lat, lng);
+            fetchWeather(lat, lng);
+        } else {
+            alert("Trop de requêtes. Veuillez patienter avant de faire un nouvel appel.");
+        }
+    } else {
+        alert("Coordonnées identiques, aucun appel API effectué.");
+    }
+}
 
 function initMap() {
     const mapCenter = { lat: 45.1885, lng: 5.7245 }; // Grenoble
@@ -15,9 +46,8 @@ function initMap() {
         const lat = mapsMouseEvent.latLng.lat();
         const lng = mapsMouseEvent.latLng.lng();
 
-        // Récupérer la qualité de l'air, la météo et les restaurants pour l'emplacement cliqué
-        fetchAirQuality(lat, lng);
-        fetchWeather(lat, lng);
+        // Récupérer les données pour l'emplacement cliqué
+        fetchDataIfNewLocation(lat, lng);
     });
 }
 
@@ -25,7 +55,12 @@ function fetchAirQuality(lat, lng) {
     const apiUrl = `https://data.api.xweather.com/airquality/${lat},${lng}?format=json&fields=loc,place,periods,periods.dominant,periods.pollutants&client_id=${clientId}&client_secret=${clientSecret}`;
 
     fetch(apiUrl)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erreur API: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 const airData = data.response[0];
@@ -67,16 +102,22 @@ function fetchAirQuality(lat, lng) {
 }
 
 function fetchWeather(lat, lng) {
-    const weatherApiKey = 'c91e8214d5b69fb200e4d6289613f4c8';  // Remplace par ta clé API OpenWeather
     const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&appid=${weatherApiKey}&units=metric&lang=fr`;
 
     fetch(weatherUrl)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erreur API: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
-            if (data.main) {  // Vérifie que les données météo sont présentes
+            if (data.main) { // Si les données sont disponibles
                 const temperature = data.main.temp;
                 const description = data.weather[0].description;
-                const weatherInfo = `<p>Température: ${temperature}°C</p><p>${description}</p>`;
+                const iconCode = data.weather[0].icon;
+                const iconUrl = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+                const weatherInfo = `<p>Température: ${temperature}°C</p><p>${description}</p><img src="${iconUrl}" alt="${description}" style="width:50px;height:50px;">`;
                 document.getElementById('weather-data').innerHTML = weatherInfo;
             } else {
                 document.getElementById('weather-data').innerHTML = 'Données météo non disponibles.';
@@ -88,4 +129,5 @@ function fetchWeather(lat, lng) {
         });
 }
 
+// Initialisation de la carte au chargement de la page
 window.onload = initMap;

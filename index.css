@@ -176,3 +176,7 @@ h1 {
         height: 250px;
     }
 }
+#weather-data img{
+    background-color: #07dd39;
+    width: 100px;
+}
