@@ -1,13 +1,13 @@
-
 const weatherApiKey = '098185580a031e38cba98336c09fb082';
 const clientId = 'j2iM83a1d4LKCt6EHg7LB';
 const clientSecret = 'T7VsTvbpQQauCfaoKyiRVQuU0PI0l5IlbxKtAan4';
 
-// Variables pour limiter les appels API
 let lastApiCall = 0;
 const apiCooldown = 10000; // Délai de 10 secondes
 let lastLocation = { lat: null, lng: null }; // Dernières coordonnées utilisées
+let map, autocomplete, service, infowindow;
 
+// Vérifie si un appel API peut être effectué
 function canMakeApiCall() {
     const now = Date.now();
     if (now - lastApiCall > apiCooldown) {
@@ -17,40 +17,102 @@ function canMakeApiCall() {
     return false;
 }
 
+// Récupère les données si une nouvelle localisation est sélectionnée
 function fetchDataIfNewLocation(lat, lng) {
     if (lat !== lastLocation.lat || lng !== lastLocation.lng) {
         lastLocation = { lat, lng };
-
         if (canMakeApiCall()) {
             fetchAirQuality(lat, lng);
             fetchWeather(lat, lng);
+            fetchNearbyRestaurants(lat, lng);  // Recherche des restaurants à proximité
         } else {
             alert("Trop de requêtes. Veuillez patienter avant de faire un nouvel appel.");
         }
-    } else {
-        alert("Coordonnées identiques, aucun appel API effectué.");
     }
 }
 
+// Initialise la carte Google Maps
 function initMap() {
     const mapCenter = { lat: 45.1885, lng: 5.7245 }; // Grenoble
 
-    // Initialiser la carte
-    const map = new google.maps.Map(document.getElementById("map"), {
+    map = new google.maps.Map(document.getElementById("map"), {
         center: mapCenter,
         zoom: 10,
     });
 
-    // Ajouter un écouteur d'événement sur la carte
+    // Création du service Places pour les recherches
+    service = new google.maps.places.PlacesService(map);
+    infowindow = new google.maps.InfoWindow();
+
+    // Associer l'autocomplétion à l'input existant
+    const input = document.querySelector('.navbar input[type="text"]');
+    autocomplete = new google.maps.places.Autocomplete(input);
+    autocomplete.bindTo('bounds', map);
+
+    autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        if (!place.geometry || !place.geometry.location) {
+            alert("Lieu introuvable. Veuillez essayer un autre endroit.");
+            return;
+        }
+
+        const location = place.geometry.location;
+        map.setCenter(location);
+        map.setZoom(12); // Zoom après la recherche
+        fetchDataIfNewLocation(location.lat(), location.lng());
+    });
+
+    // Ajout de l'événement de clic sur la carte
     map.addListener("click", (mapsMouseEvent) => {
         const lat = mapsMouseEvent.latLng.lat();
         const lng = mapsMouseEvent.latLng.lng();
-
-        // Récupérer les données pour l'emplacement cliqué
         fetchDataIfNewLocation(lat, lng);
     });
 }
 
+// Recherche des restaurants à proximité
+function fetchNearbyRestaurants(lat, lng) {
+    const request = {
+        location: new google.maps.LatLng(lat, lng),
+        radius: 1500, // Rayon de 1.5 km
+        type: ['restaurant'], // Recherche uniquement les restaurants
+    };
+
+    service.nearbySearch(request, (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK) {
+            // Vider les résultats précédents
+            clearMarkers();
+
+            // Affichage des restaurants sur la carte
+            results.forEach(place => {
+                const marker = new google.maps.Marker({
+                    position: place.geometry.location,
+                    map: map,
+                    title: place.name,
+                });
+
+                // Afficher une info-bulle au clic
+                google.maps.event.addListener(marker, 'click', () => {
+                    infowindow.setContent(`
+                        <h3>${place.name}</h3>
+                        <p>${place.vicinity}</p>
+                    `);
+                    infowindow.open(map, marker);
+                });
+            });
+        } else {
+            alert('Aucun restaurant trouvé à proximité.');
+        }
+    });
+}
+
+// Vider les marqueurs existants (si nécessaire)
+function clearMarkers() {
+    const markers = map.getMarkers();
+    markers.forEach(marker => marker.setMap(null));
+}
+
+// Récupère les données sur la qualité de l'air
 function fetchAirQuality(lat, lng) {
     const apiUrl = `https://data.api.xweather.com/airquality/${lat},${lng}?format=json&fields=loc,place,periods,periods.dominant,periods.pollutants&client_id=${clientId}&client_secret=${clientSecret}`;
 
@@ -101,6 +163,7 @@ function fetchAirQuality(lat, lng) {
         });
 }
 
+// Récupère les données météorologiques
 function fetchWeather(lat, lng) {
     const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&appid=${weatherApiKey}&units=metric&lang=fr`;
 
@@ -112,7 +175,7 @@ function fetchWeather(lat, lng) {
             return response.json();
         })
         .then(data => {
-            if (data.main) { // Si les données sont disponibles
+            if (data.main) {
                 const temperature = data.main.temp;
                 const description = data.weather[0].description;
                 const iconCode = data.weather[0].icon;
