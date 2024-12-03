@@ -72,30 +72,18 @@ function initMap() {
 
 // Recherche des restaurants à proximité
 // Fonction de récupération des restaurants à proximité (avec une API publique ou autre service)
+// Fonction pour récupérer les restaurants proches
 function fetchNearbyRestaurants(lat, lng) {
-    // Utilisation de l'API Overpass pour rechercher des restaurants autour des coordonnées données
-    // La requête récupère les restaurants dans une zone de 0.01 degré autour du point central
     const apiUrl = `https://overpass-api.de/api/interpreter?data=[out:json];node[amenity=restaurant](${lat-0.01},${lng-0.01},${lat+0.01},${lng+0.01});out;`;
 
     fetch(apiUrl)
-        .then(response => {
-            if (!response.ok) {
-                console.error(`Erreur API: ${response.status}`);
-                throw new Error(`Erreur API: ${response.status}`);
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            console.log('Données de l\'API:', data); // Affichage des données reçues pour le débogage
-
             const restaurantList = document.getElementById("restaurants-list");
-            restaurantList.innerHTML = ""; // Vider la liste avant d'ajouter les nouveaux résultats
-
+            restaurantList.innerHTML = ""; // Vider la liste avant de la remplir
+            
             if (data.elements && data.elements.length > 0) {
-                clearMarkers(); // Vider les marqueurs précédents
-
                 data.elements.forEach(place => {
-                    // Vérification de la présence des informations nécessaires
                     if (place.lat && place.lon) {
                         const marker = new google.maps.Marker({
                             position: new google.maps.LatLng(place.lat, place.lon),
@@ -103,21 +91,19 @@ function fetchNearbyRestaurants(lat, lng) {
                             title: place.tags.name || "Restaurant",
                         });
 
-                        // Ajouter un écouteur d'événement pour afficher les détails du restaurant lorsqu'on clique sur le marqueur
                         google.maps.event.addListener(marker, 'click', () => {
                             infowindow.setContent(`
                                 <h3>${place.tags.name || 'Restaurant'}</h3>
-                                <p>${place.tags['addr:street'] || 'Adresse non disponible'}, ${place.tags['addr:city'] || 'Ville non disponible'}</p>
+                                <p>${place.tags['addr:street'] || 'Adresse non disponible'}</p>
                             `);
                             infowindow.open(map, marker);
                         });
 
-                        // Ajouter le restaurant à la liste dans le panneau latéral
                         const listItem = document.createElement("div");
                         listItem.classList.add("restaurant-item");
                         listItem.innerHTML = `
                             <h4>${place.tags.name || 'Restaurant'}</h4>
-                            <p>${place.tags['addr:street'] || 'Adresse non disponible'}, ${place.tags['addr:city'] || 'Ville non disponible'}</p>
+                            <p>${place.tags['addr:street'] || 'Adresse non disponible'}</p>
                             <button onclick="panToLocation(${place.lat}, ${place.lon})">Voir sur la carte</button>
                         `;
                         restaurantList.appendChild(listItem);
@@ -128,12 +114,12 @@ function fetchNearbyRestaurants(lat, lng) {
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);  // Affichage de l'erreur de récupération
+            console.error('Erreur:', error);
             document.getElementById('restaurants-list').innerHTML = 'Erreur lors de la récupération des restaurants.';
         });
 }
 
-// Fonction pour recentrer la carte sur une position spécifique
+// Fonction pour recentrer la carte sur un endroit spécifique
 function panToLocation(lat, lng) {
     map.setCenter({ lat, lng });
     map.setZoom(15);
