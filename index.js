@@ -71,40 +71,81 @@ function initMap() {
 }
 
 // Recherche des restaurants à proximité
+// Fonction de récupération des restaurants à proximité (avec une API publique ou autre service)
 function fetchNearbyRestaurants(lat, lng) {
-    const request = {
-        location: new google.maps.LatLng(lat, lng),
-        radius: 1500, // Rayon de 1.5 km
-        type: ['restaurant'], // Recherche uniquement les restaurants
-    };
+    // Utilisation de l'API Overpass pour rechercher des restaurants autour des coordonnées données
+    // La requête récupère les restaurants dans une zone de 0.01 degré autour du point central
+    const apiUrl = `https://overpass-api.de/api/interpreter?data=[out:json];node[amenity=restaurant](${lat-0.01},${lng-0.01},${lat+0.01},${lng+0.01});out;`;
 
-    service.nearbySearch(request, (results, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK) {
-            // Vider les résultats précédents
-            clearMarkers();
+    fetch(apiUrl)
+        .then(response => {
+            if (!response.ok) {
+                console.error(`Erreur API: ${response.status}`);
+                throw new Error(`Erreur API: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Données de l\'API:', data); // Affichage des données reçues pour le débogage
 
-            // Affichage des restaurants sur la carte
-            results.forEach(place => {
-                const marker = new google.maps.Marker({
-                    position: place.geometry.location,
-                    map: map,
-                    title: place.name,
+            const restaurantList = document.getElementById("restaurants-list");
+            restaurantList.innerHTML = ""; // Vider la liste avant d'ajouter les nouveaux résultats
+
+            if (data.elements && data.elements.length > 0) {
+                clearMarkers(); // Vider les marqueurs précédents
+
+                data.elements.forEach(place => {
+                    // Vérification de la présence des informations nécessaires
+                    if (place.lat && place.lon) {
+                        const marker = new google.maps.Marker({
+                            position: new google.maps.LatLng(place.lat, place.lon),
+                            map: map,
+                            title: place.tags.name || "Restaurant",
+                        });
+
+                        // Ajouter un écouteur d'événement pour afficher les détails du restaurant lorsqu'on clique sur le marqueur
+                        google.maps.event.addListener(marker, 'click', () => {
+                            infowindow.setContent(`
+                                <h3>${place.tags.name || 'Restaurant'}</h3>
+                                <p>${place.tags['addr:street'] || 'Adresse non disponible'}, ${place.tags['addr:city'] || 'Ville non disponible'}</p>
+                            `);
+                            infowindow.open(map, marker);
+                        });
+
+                        // Ajouter le restaurant à la liste dans le panneau latéral
+                        const listItem = document.createElement("div");
+                        listItem.classList.add("restaurant-item");
+                        listItem.innerHTML = `
+                            <h4>${place.tags.name || 'Restaurant'}</h4>
+                            <p>${place.tags['addr:street'] || 'Adresse non disponible'}, ${place.tags['addr:city'] || 'Ville non disponible'}</p>
+                            <button onclick="panToLocation(${place.lat}, ${place.lon})">Voir sur la carte</button>
+                        `;
+                        restaurantList.appendChild(listItem);
+                    }
                 });
-
-                // Afficher une info-bulle au clic
-                google.maps.event.addListener(marker, 'click', () => {
-                    infowindow.setContent(`
-                        <h3>${place.name}</h3>
-                        <p>${place.vicinity}</p>
-                    `);
-                    infowindow.open(map, marker);
-                });
-            });
-        } else {
-            alert('Aucun restaurant trouvé à proximité.');
-        }
-    });
+            } else {
+                restaurantList.innerHTML = "<p>Aucun restaurant trouvé à proximité.</p>";
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);  // Affichage de l'erreur de récupération
+            document.getElementById('restaurants-list').innerHTML = 'Erreur lors de la récupération des restaurants.';
+        });
 }
+
+// Fonction pour recentrer la carte sur une position spécifique
+function panToLocation(lat, lng) {
+    map.setCenter({ lat, lng });
+    map.setZoom(15);
+}
+
+// Vider les marqueurs existants (si nécessaire)
+function clearMarkers() {
+    const markers = map.getMarkers();
+    markers.forEach(marker => marker.setMap(null));
+}
+
+
 
 // Vider les marqueurs existants (si nécessaire)
 function clearMarkers() {
